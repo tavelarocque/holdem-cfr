@@ -1,0 +1,7 @@
+# Keep GitHub's language bar about the source: these files are generated
+# (pages built by scripts, the exported strategy, test fixtures, rendered PDFs).
+index.html linguist-generated
+web/table/index.html linguist-generated
+web/table/blueprint.json linguist-generated
+web/table/fixtures/** linguist-generated
+docs/*.pdf linguist-generated
