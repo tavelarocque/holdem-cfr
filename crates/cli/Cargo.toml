@@ -1,0 +1,18 @@
+[package]
+name = "cli"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "holdem-cfr"
+path = "src/main.rs"
+
+[dependencies]
+engine.workspace = true
+games.workspace = true
+postflop.workspace = true
+hunl.workspace = true
+eval.workspace = true
+clap.workspace = true
+rayon.workspace = true

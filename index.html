@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>holdem-cfr</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a research write-up in one reading column, with a strategy chart from the trained bot as the opener,
+   evidence charts set wide, and the findings at the close. */
+:root {
+  --paper: #f4f6f5;
+  --sheet: #ffffff;
+  --ink: #14201d;
+  --muted: #5a6a65;
+  --line: #d5ddda;
+  --felt: #0d5c4e;
+  --felt-ink: #ffffff;
+  --brass: #9a6c14;
+  --cell: #e3e9e6;
+  --s1: #8a9a95; --s2: #b8862f; --s3: #0d5c4e; --s4: #c2410c;
+  --display: "Familjen Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0c1214; --sheet: #121b1d; --ink: #e5ece9; --muted: #90a39d; --line: #24322f;
+    --felt: #4fb39c; --felt-ink: #08201b; --brass: #d7a64a; --cell: #1a2527;
+    --s1: #7d8f89; --s2: #d7a64a; --s3: #4fb39c; --s4: #f07a4a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0c1214; --sheet: #121b1d; --ink: #e5ece9; --muted: #90a39d; --line: #24322f;
+  --felt: #4fb39c; --felt-ink: #08201b; --brass: #d7a64a; --cell: #1a2527;
+  --s1: #7d8f89; --s2: #d7a64a; --s3: #4fb39c; --s4: #f07a4a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 64px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: clamp(24px, 3vw, 30px); font-weight: 700; }
+h3 { font-size: 18px; font-weight: 600; }
+p { margin: 0; max-width: 66ch; }
+a { color: var(--felt); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 4px; }
+.eyebrow { font-family: var(--mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.section { display: grid; gap: 20px; }
+.section > header { display: grid; gap: 8px; }
+.lede { font-size: 18px; color: var(--ink); }
+.muted { color: var(--muted); }
+
+/* ---------- hero ---------- */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 470px); gap: 40px; align-items: center; }
+@media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); } }
+.hero h1 { font-size: clamp(44px, 7vw, 76px); font-weight: 700; letter-spacing: -0.03em; }
+.hero h1 span { color: var(--felt); }
+.hero .intro { display: grid; gap: 18px; min-width: 0; }
+.links { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 15px; }
+.chart-card { background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.grid13 { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 2px; }
+.c {
+  aspect-ratio: 1; border-radius: 2px; position: relative; overflow: hidden;
+  background: linear-gradient(to top, var(--felt) var(--r), var(--cell) var(--r));
+  opacity: calc(0.28 + 0.72 * var(--p));
+  display: grid; place-items: center;
+}
+.c span { font-family: var(--mono); font-size: clamp(7px, 1.5vw, 10.5px); font-weight: 500; color: var(--ink); mix-blend-mode: normal; line-height: 1; }
+.c.pair { box-shadow: inset 0 0 0 1px var(--brass); }
+.c.hi span { color: var(--felt-ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); align-items: center; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+.caption { font-size: 13px; color: var(--muted); }
+
+.facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+@media (max-width: 900px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.fact { padding: 16px 14px 16px 0; display: grid; gap: 4px; align-content: start; }
+.fact b { font-family: var(--display); font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.fact span { font-size: 13px; color: var(--muted); line-height: 1.4; }
+
+/* ---------- milestones ---------- */
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+td.m { font-family: var(--mono); color: var(--felt); white-space: nowrap; font-weight: 500; }
+td.gate { color: var(--muted); min-width: 260px; }
+td.what { min-width: 260px; }
+
+/* ---------- charts ---------- */
+.charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 900px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+svg { width: 100%; height: auto; display: block; }
+svg .grid { stroke: var(--line); stroke-width: 1; }
+svg .tick { fill: var(--muted); font-family: var(--mono); font-size: 11px; }
+svg .axis { fill: var(--muted); font-family: var(--body); font-size: 12px; }
+svg .line { fill: none; stroke-width: 2.2; stroke-linejoin: round; }
+svg .line.s1 { stroke: var(--s1); } svg .line.s2 { stroke: var(--s2); } svg .line.s3 { stroke: var(--s3); } svg .line.s4 { stroke: var(--s4); }
+svg .lbl { font-family: var(--body); font-size: 12.5px; font-weight: 600; }
+svg .lbl.s1 { fill: var(--s1); } svg .lbl.s2 { fill: var(--s2); } svg .lbl.s3 { fill: var(--s3); } svg .lbl.s4 { fill: var(--s4); }
+svg .bar { fill: var(--s1); } svg .bar.best { fill: var(--felt); }
+svg .ci { stroke: var(--ink); stroke-width: 1.4; }
+svg .val { fill: var(--ink); font-family: var(--mono); font-size: 12px; }
+svg .rowlbl { fill: var(--ink); font-family: var(--mono); font-size: 13px; font-weight: 500; }
+svg .rowlbl.best { fill: var(--felt); }
+svg .rownote { fill: var(--muted); font-family: var(--body); font-size: 11px; }
+svg .ref { stroke: var(--brass); stroke-width: 1.4; stroke-dasharray: 4 3; }
+svg .reflbl { fill: var(--brass); font-family: var(--body); font-size: 11.5px; }
+
+.two { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.story { display: grid; gap: 8px; align-content: start; border-top: 2px solid var(--felt); padding-top: 14px; }
+.story p { font-size: 15px; }
+
+/* ---------- resume ---------- */
+.resume { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: clamp(18px, 3vw, 32px); display: grid; gap: 22px; }
+.resume-head { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: baseline; }
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.tabs button { border: 0; background: none; font: inherit; font-size: 14px; font-weight: 500; padding: 5px 14px; border-radius: 999px; cursor: pointer; color: var(--muted); }
+.tabs button[aria-pressed="true"] { background: var(--felt); color: var(--felt-ink); }
+.cv { display: grid; gap: 10px; }
+.cv-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; font-size: 15.5px; }
+.cv-title b { font-family: var(--display); font-weight: 700; font-size: 17px; }
+.cv ul { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
+.cv li { max-width: 92ch; padding-left: 2px; }
+.cv li::marker { color: var(--felt); }
+.bullet { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.copy { border: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; padding: 3px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.copy:hover { color: var(--ink); border-color: var(--muted); }
+.copy.done { color: var(--felt); border-color: var(--felt); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.primary { border: 0; background: var(--felt); color: var(--felt-ink); font: inherit; font-weight: 600; font-size: 14.5px; padding: 9px 18px; border-radius: 8px; cursor: pointer; }
+.notes { display: grid; gap: 6px; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+.notes p { max-width: 90ch; }
+footer { font-size: 13px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="intro">
+      <div class="eyebrow">Rust · heads-up no-limit hold'em · Tave La Rocque · 2026</div>
+      <h1>holdem-<span>cfr</span></h1>
+      <p class="lede">A counterfactual regret minimization solver for heads-up no-limit Texas hold'em, built from scratch in Rust. It covers the same pieces as Libratus and Pluribus at laptop scale: an abstracted blueprint trained by Monte Carlo CFR, an exact range-vs-range postflop solver, and a measurement stack that reports how exploitable the result is.</p>
+      <p class="muted">Every layer is checked against something it cannot fake: closed-form equilibria, published game values, brute-force enumeration, or an independent implementation.</p>
+      <div class="links">
+        <a href="web/table/" target="_blank" rel="noopener">Play the trained bot</a>
+        <a href="https://github.com/tavelarocque/holdem-cfr" target="_blank" rel="noopener">github.com/tavelarocque/holdem-cfr</a>
+      </div>
+    </div>
+    <figure class="chart-card" style="margin:0">
+      <div class="grid13" role="img" aria-label="13 by 13 chart of the trained blueprint's first decision on the button for all 169 starting hands">
+<div class="c pair hi" style="--r:85%;--p:1.00" title="AA: raise 85%, limp 15%, fold 0%"><span>AA</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="AKs: raise 99%, limp 1%, fold 0%"><span>AKs</span></div>
+<div class="c hi" style="--r:95%;--p:1.00" title="AQs: raise 95%, limp 5%, fold 0%"><span>AQs</span></div>
+<div class="c hi" style="--r:98%;--p:1.00" title="AJs: raise 98%, limp 2%, fold 0%"><span>AJs</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="ATs: raise 100%, limp 0%, fold 0%"><span>ATs</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="A9s: raise 100%, limp 0%, fold 0%"><span>A9s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="A8s: raise 100%, limp 0%, fold 0%"><span>A8s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="A7s: raise 100%, limp 0%, fold 0%"><span>A7s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="A6s: raise 100%, limp 0%, fold 0%"><span>A6s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="A5s: raise 100%, limp 0%, fold 0%"><span>A5s</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="A4s: raise 99%, limp 1%, fold 0%"><span>A4s</span></div>
+<div class="c hi" style="--r:95%;--p:1.00" title="A3s: raise 95%, limp 5%, fold 0%"><span>A3s</span></div>
+<div class="c" style="--r:46%;--p:1.00" title="A2s: raise 46%, limp 54%, fold 0%"><span>A2s</span></div>
+<div class="c hi" style="--r:93%;--p:1.00" title="AKo: raise 93%, limp 7%, fold 0%"><span>AKo</span></div>
+<div class="c pair hi" style="--r:98%;--p:1.00" title="KK: raise 98%, limp 2%, fold 0%"><span>KK</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="KQs: raise 100%, limp 0%, fold 0%"><span>KQs</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="KJs: raise 100%, limp 0%, fold 0%"><span>KJs</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="KTs: raise 100%, limp 0%, fold 0%"><span>KTs</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="K9s: raise 100%, limp 0%, fold 0%"><span>K9s</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="K8s: raise 99%, limp 1%, fold 0%"><span>K8s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="K7s: raise 100%, limp 0%, fold 0%"><span>K7s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="K6s: raise 100%, limp 0%, fold 0%"><span>K6s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="K5s: raise 100%, limp 0%, fold 0%"><span>K5s</span></div>
+<div class="c hi" style="--r:69%;--p:1.00" title="K4s: raise 69%, limp 31%, fold 0%"><span>K4s</span></div>
+<div class="c hi" style="--r:78%;--p:1.00" title="K3s: raise 78%, limp 22%, fold 0%"><span>K3s</span></div>
+<div class="c" style="--r:4%;--p:1.00" title="K2s: raise 4%, limp 96%, fold 0%"><span>K2s</span></div>
+<div class="c hi" style="--r:89%;--p:1.00" title="AQo: raise 89%, limp 11%, fold 0%"><span>AQo</span></div>
+<div class="c hi" style="--r:98%;--p:1.00" title="KQo: raise 98%, limp 2%, fold 0%"><span>KQo</span></div>
+<div class="c pair hi" style="--r:86%;--p:1.00" title="QQ: raise 86%, limp 14%, fold 0%"><span>QQ</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="QJs: raise 100%, limp 0%, fold 0%"><span>QJs</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="QTs: raise 100%, limp 0%, fold 0%"><span>QTs</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="Q9s: raise 100%, limp 0%, fold 0%"><span>Q9s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="Q8s: raise 100%, limp 0%, fold 0%"><span>Q8s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="Q7s: raise 100%, limp 0%, fold 0%"><span>Q7s</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="Q6s: raise 99%, limp 1%, fold 0%"><span>Q6s</span></div>
+<div class="c" style="--r:25%;--p:1.00" title="Q5s: raise 25%, limp 75%, fold 0%"><span>Q5s</span></div>
+<div class="c" style="--r:0%;--p:1.00" title="Q4s: raise 0%, limp 100%, fold 0%"><span>Q4s</span></div>
+<div class="c" style="--r:0%;--p:1.00" title="Q3s: raise 0%, limp 100%, fold 0%"><span>Q3s</span></div>
+<div class="c" style="--r:0%;--p:1.00" title="Q2s: raise 0%, limp 100%, fold 0%"><span>Q2s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="AJo: raise 100%, limp 0%, fold 0%"><span>AJo</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="KJo: raise 99%, limp 1%, fold 0%"><span>KJo</span></div>
+<div class="c hi" style="--r:60%;--p:1.00" title="QJo: raise 60%, limp 40%, fold 0%"><span>QJo</span></div>
+<div class="c pair hi" style="--r:93%;--p:1.00" title="JJ: raise 93%, limp 7%, fold 0%"><span>JJ</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="JTs: raise 100%, limp 0%, fold 0%"><span>JTs</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="J9s: raise 100%, limp 0%, fold 0%"><span>J9s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="J8s: raise 100%, limp 0%, fold 0%"><span>J8s</span></div>
+<div class="c hi" style="--r:98%;--p:1.00" title="J7s: raise 98%, limp 2%, fold 0%"><span>J7s</span></div>
+<div class="c hi" style="--r:71%;--p:1.00" title="J6s: raise 71%, limp 29%, fold 0%"><span>J6s</span></div>
+<div class="c" style="--r:49%;--p:1.00" title="J5s: raise 49%, limp 51%, fold 0%"><span>J5s</span></div>
+<div class="c" style="--r:19%;--p:1.00" title="J4s: raise 19%, limp 81%, fold 0%"><span>J4s</span></div>
+<div class="c" style="--r:0%;--p:1.00" title="J3s: raise 0%, limp 100%, fold 0%"><span>J3s</span></div>
+<div class="c hi" style="--r:62%;--p:1.00" title="J2s: raise 62%, limp 38%, fold 0%"><span>J2s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="ATo: raise 100%, limp 0%, fold 0%"><span>ATo</span></div>
+<div class="c hi" style="--r:59%;--p:1.00" title="KTo: raise 59%, limp 41%, fold 0%"><span>KTo</span></div>
+<div class="c" style="--r:27%;--p:1.00" title="QTo: raise 27%, limp 73%, fold 0%"><span>QTo</span></div>
+<div class="c" style="--r:31%;--p:1.00" title="JTo: raise 31%, limp 69%, fold 0%"><span>JTo</span></div>
+<div class="c pair hi" style="--r:93%;--p:1.00" title="TT: raise 93%, limp 7%, fold 0%"><span>TT</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="T9s: raise 100%, limp 0%, fold 0%"><span>T9s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="T8s: raise 100%, limp 0%, fold 0%"><span>T8s</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="T7s: raise 99%, limp 1%, fold 0%"><span>T7s</span></div>
+<div class="c hi" style="--r:97%;--p:1.00" title="T6s: raise 97%, limp 3%, fold 0%"><span>T6s</span></div>
+<div class="c" style="--r:2%;--p:1.00" title="T5s: raise 2%, limp 98%, fold 0%"><span>T5s</span></div>
+<div class="c" style="--r:21%;--p:1.00" title="T4s: raise 21%, limp 79%, fold 0%"><span>T4s</span></div>
+<div class="c hi" style="--r:53%;--p:1.00" title="T3s: raise 53%, limp 47%, fold 0%"><span>T3s</span></div>
+<div class="c hi" style="--r:89%;--p:1.00" title="T2s: raise 89%, limp 11%, fold 0%"><span>T2s</span></div>
+<div class="c hi" style="--r:62%;--p:1.00" title="A9o: raise 62%, limp 38%, fold 0%"><span>A9o</span></div>
+<div class="c hi" style="--r:53%;--p:1.00" title="K9o: raise 53%, limp 47%, fold 0%"><span>K9o</span></div>
+<div class="c" style="--r:10%;--p:1.00" title="Q9o: raise 10%, limp 90%, fold 0%"><span>Q9o</span></div>
+<div class="c" style="--r:35%;--p:1.00" title="J9o: raise 35%, limp 65%, fold 0%"><span>J9o</span></div>
+<div class="c hi" style="--r:69%;--p:1.00" title="T9o: raise 69%, limp 31%, fold 0%"><span>T9o</span></div>
+<div class="c pair hi" style="--r:97%;--p:1.00" title="99: raise 97%, limp 3%, fold 0%"><span>99</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="98s: raise 99%, limp 1%, fold 0%"><span>98s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="97s: raise 100%, limp 0%, fold 0%"><span>97s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="96s: raise 100%, limp 0%, fold 0%"><span>96s</span></div>
+<div class="c hi" style="--r:91%;--p:1.00" title="95s: raise 91%, limp 9%, fold 0%"><span>95s</span></div>
+<div class="c" style="--r:44%;--p:1.00" title="94s: raise 44%, limp 56%, fold 0%"><span>94s</span></div>
+<div class="c hi" style="--r:67%;--p:1.00" title="93s: raise 67%, limp 33%, fold 0%"><span>93s</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="92s: raise 99%, limp 1%, fold 0%"><span>92s</span></div>
+<div class="c hi" style="--r:50%;--p:1.00" title="A8o: raise 50%, limp 50%, fold 0%"><span>A8o</span></div>
+<div class="c hi" style="--r:93%;--p:1.00" title="K8o: raise 93%, limp 7%, fold 0%"><span>K8o</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="Q8o: raise 99%, limp 1%, fold 0%"><span>Q8o</span></div>
+<div class="c hi" style="--r:95%;--p:1.00" title="J8o: raise 95%, limp 5%, fold 0%"><span>J8o</span></div>
+<div class="c" style="--r:31%;--p:1.00" title="T8o: raise 31%, limp 69%, fold 0%"><span>T8o</span></div>
+<div class="c" style="--r:2%;--p:1.00" title="98o: raise 2%, limp 98%, fold 0%"><span>98o</span></div>
+<div class="c pair hi" style="--r:79%;--p:1.00" title="88: raise 79%, limp 21%, fold 0%"><span>88</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="87s: raise 100%, limp 0%, fold 0%"><span>87s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="86s: raise 100%, limp 0%, fold 0%"><span>86s</span></div>
+<div class="c hi" style="--r:94%;--p:1.00" title="85s: raise 94%, limp 6%, fold 0%"><span>85s</span></div>
+<div class="c" style="--r:1%;--p:1.00" title="84s: raise 1%, limp 99%, fold 0%"><span>84s</span></div>
+<div class="c" style="--r:11%;--p:1.00" title="83s: raise 11%, limp 89%, fold 0%"><span>83s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="82s: raise 100%, limp 0%, fold 0%"><span>82s</span></div>
+<div class="c hi" style="--r:74%;--p:1.00" title="A7o: raise 74%, limp 26%, fold 0%"><span>A7o</span></div>
+<div class="c hi" style="--r:79%;--p:1.00" title="K7o: raise 79%, limp 21%, fold 0%"><span>K7o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="Q7o: raise 100%, limp 0%, fold 0%"><span>Q7o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="J7o: raise 100%, limp 0%, fold 0%"><span>J7o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="T7o: raise 100%, limp 0%, fold 0%"><span>T7o</span></div>
+<div class="c hi" style="--r:77%;--p:1.00" title="97o: raise 77%, limp 23%, fold 0%"><span>97o</span></div>
+<div class="c" style="--r:1%;--p:1.00" title="87o: raise 1%, limp 99%, fold 0%"><span>87o</span></div>
+<div class="c pair hi" style="--r:75%;--p:1.00" title="77: raise 75%, limp 25%, fold 0%"><span>77</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="76s: raise 100%, limp 0%, fold 0%"><span>76s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="75s: raise 100%, limp 0%, fold 0%"><span>75s</span></div>
+<div class="c hi" style="--r:89%;--p:1.00" title="74s: raise 89%, limp 11%, fold 0%"><span>74s</span></div>
+<div class="c" style="--r:2%;--p:1.00" title="73s: raise 2%, limp 98%, fold 0%"><span>73s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="72s: raise 100%, limp 0%, fold 0%"><span>72s</span></div>
+<div class="c hi" style="--r:98%;--p:1.00" title="A6o: raise 98%, limp 2%, fold 0%"><span>A6o</span></div>
+<div class="c" style="--r:40%;--p:1.00" title="K6o: raise 40%, limp 60%, fold 0%"><span>K6o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="Q6o: raise 100%, limp 0%, fold 0%"><span>Q6o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="J6o: raise 100%, limp 0%, fold 0%"><span>J6o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="T6o: raise 100%, limp 0%, fold 0%"><span>T6o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="96o: raise 100%, limp 0%, fold 0%"><span>96o</span></div>
+<div class="c hi" style="--r:93%;--p:1.00" title="86o: raise 93%, limp 7%, fold 0%"><span>86o</span></div>
+<div class="c" style="--r:14%;--p:1.00" title="76o: raise 14%, limp 86%, fold 0%"><span>76o</span></div>
+<div class="c pair hi" style="--r:85%;--p:1.00" title="66: raise 85%, limp 15%, fold 0%"><span>66</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="65s: raise 100%, limp 0%, fold 0%"><span>65s</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="64s: raise 100%, limp 0%, fold 0%"><span>64s</span></div>
+<div class="c" style="--r:22%;--p:1.00" title="63s: raise 22%, limp 78%, fold 0%"><span>63s</span></div>
+<div class="c" style="--r:32%;--p:1.00" title="62s: raise 32%, limp 68%, fold 0%"><span>62s</span></div>
+<div class="c" style="--r:20%;--p:1.00" title="A5o: raise 20%, limp 80%, fold 0%"><span>A5o</span></div>
+<div class="c hi" style="--r:96%;--p:1.00" title="K5o: raise 96%, limp 4%, fold 0%"><span>K5o</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="Q5o: raise 99%, limp 1%, fold 0%"><span>Q5o</span></div>
+<div class="c hi" style="--r:97%;--p:1.00" title="J5o: raise 97%, limp 3%, fold 0%"><span>J5o</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="T5o: raise 99%, limp 1%, fold 0%"><span>T5o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="95o: raise 100%, limp 0%, fold 0%"><span>95o</span></div>
+<div class="c hi" style="--r:98%;--p:1.00" title="85o: raise 98%, limp 2%, fold 0%"><span>85o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="75o: raise 100%, limp 0%, fold 0%"><span>75o</span></div>
+<div class="c" style="--r:18%;--p:1.00" title="65o: raise 18%, limp 82%, fold 0%"><span>65o</span></div>
+<div class="c pair" style="--r:45%;--p:1.00" title="55: raise 45%, limp 55%, fold 0%"><span>55</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="54s: raise 100%, limp 0%, fold 0%"><span>54s</span></div>
+<div class="c hi" style="--r:96%;--p:1.00" title="53s: raise 96%, limp 4%, fold 0%"><span>53s</span></div>
+<div class="c" style="--r:2%;--p:1.00" title="52s: raise 2%, limp 98%, fold 0%"><span>52s</span></div>
+<div class="c hi" style="--r:96%;--p:1.00" title="A4o: raise 96%, limp 4%, fold 0%"><span>A4o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="K4o: raise 100%, limp 0%, fold 0%"><span>K4o</span></div>
+<div class="c hi" style="--r:100%;--p:1.00" title="Q4o: raise 100%, limp 0%, fold 0%"><span>Q4o</span></div>
+<div class="c hi" style="--r:56%;--p:1.00" title="J4o: raise 56%, limp 44%, fold 0%"><span>J4o</span></div>
+<div class="c hi" style="--r:92%;--p:1.00" title="T4o: raise 92%, limp 8%, fold 0%"><span>T4o</span></div>
+<div class="c" style="--r:1%;--p:1.00" title="94o: raise 1%, limp 99%, fold 0%"><span>94o</span></div>
+<div class="c" style="--r:0%;--p:1.00" title="84o: raise 0%, limp 100%, fold 0%"><span>84o</span></div>
+<div class="c" style="--r:0%;--p:1.00" title="74o: raise 0%, limp 100%, fold 0%"><span>74o</span></div>
+<div class="c hi" style="--r:90%;--p:1.00" title="64o: raise 90%, limp 10%, fold 0%"><span>64o</span></div>
+<div class="c" style="--r:15%;--p:1.00" title="54o: raise 15%, limp 85%, fold 0%"><span>54o</span></div>
+<div class="c pair hi" style="--r:98%;--p:1.00" title="44: raise 98%, limp 2%, fold 0%"><span>44</span></div>
+<div class="c hi" style="--r:89%;--p:1.00" title="43s: raise 89%, limp 11%, fold 0%"><span>43s</span></div>
+<div class="c hi" style="--r:82%;--p:1.00" title="42s: raise 82%, limp 18%, fold 0%"><span>42s</span></div>
+<div class="c hi" style="--r:93%;--p:1.00" title="A3o: raise 93%, limp 7%, fold 0%"><span>A3o</span></div>
+<div class="c hi" style="--r:98%;--p:1.00" title="K3o: raise 98%, limp 2%, fold 0%"><span>K3o</span></div>
+<div class="c" style="--r:3%;--p:1.00" title="Q3o: raise 3%, limp 97%, fold 0%"><span>Q3o</span></div>
+<div class="c" style="--r:49%;--p:1.00" title="J3o: raise 49%, limp 51%, fold 0%"><span>J3o</span></div>
+<div class="c hi" style="--r:90%;--p:1.00" title="T3o: raise 90%, limp 10%, fold 0%"><span>T3o</span></div>
+<div class="c" style="--r:2%;--p:1.00" title="93o: raise 2%, limp 98%, fold 0%"><span>93o</span></div>
+<div class="c" style="--r:0%;--p:0.05" title="83o: raise 0%, limp 5%, fold 95%"><span>83o</span></div>
+<div class="c" style="--r:0%;--p:0.88" title="73o: raise 0%, limp 88%, fold 12%"><span>73o</span></div>
+<div class="c" style="--r:0%;--p:1.00" title="63o: raise 0%, limp 100%, fold 0%"><span>63o</span></div>
+<div class="c" style="--r:27%;--p:1.00" title="53o: raise 27%, limp 73%, fold 0%"><span>53o</span></div>
+<div class="c" style="--r:5%;--p:0.13" title="43o: raise 5%, limp 8%, fold 87%"><span>43o</span></div>
+<div class="c pair" style="--r:47%;--p:1.00" title="33: raise 47%, limp 53%, fold 0%"><span>33</span></div>
+<div class="c hi" style="--r:56%;--p:1.00" title="32s: raise 56%, limp 44%, fold 0%"><span>32s</span></div>
+<div class="c hi" style="--r:91%;--p:1.00" title="A2o: raise 91%, limp 9%, fold 0%"><span>A2o</span></div>
+<div class="c hi" style="--r:99%;--p:1.00" title="K2o: raise 99%, limp 1%, fold 0%"><span>K2o</span></div>
+<div class="c" style="--r:4%;--p:1.00" title="Q2o: raise 4%, limp 96%, fold 0%"><span>Q2o</span></div>
+<div class="c hi" style="--r:71%;--p:1.00" title="J2o: raise 71%, limp 29%, fold 0%"><span>J2o</span></div>
+<div class="c" style="--r:20%;--p:1.00" title="T2o: raise 20%, limp 80%, fold 0%"><span>T2o</span></div>
+<div class="c" style="--r:0%;--p:0.06" title="92o: raise 0%, limp 6%, fold 94%"><span>92o</span></div>
+<div class="c" style="--r:0%;--p:0.00" title="82o: raise 0%, limp 0%, fold 100%"><span>82o</span></div>
+<div class="c" style="--r:0%;--p:0.00" title="72o: raise 0%, limp 0%, fold 100%"><span>72o</span></div>
+<div class="c" style="--r:0%;--p:0.00" title="62o: raise 0%, limp 0%, fold 100%"><span>62o</span></div>
+<div class="c" style="--r:0%;--p:0.02" title="52o: raise 0%, limp 2%, fold 98%"><span>52o</span></div>
+<div class="c" style="--r:0%;--p:0.00" title="42o: raise 0%, limp 0%, fold 100%"><span>42o</span></div>
+<div class="c" style="--r:0%;--p:0.00" title="32o: raise 0%, limp 0%, fold 100%"><span>32o</span></div>
+<div class="c pair hi" style="--r:95%;--p:1.00" title="22: raise 95%, limp 5%, fold 0%"><span>22</span></div>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--felt)"></i>share raised</span>
+        <span><i class="sw" style="background:var(--cell)"></i>share limped</span>
+        <span><i class="sw" style="background:var(--cell);opacity:.35"></i>faded = folded</span>
+      </div>
+      <figcaption class="caption">The trained blueprint's first decision on the button, 100 bb deep: the share of each starting hand it raises, limps or folds. Suited hands above the diagonal. Read from the 924M-iteration strategy the web table plays.</figcaption>
+    </figure>
+  </section>
+
+  <div class="facts">
+    <div class="fact"><b>0</b><span>evaluator mismatches across all 133,784,560 seven-card hands</span></div>
+    <div class="fact"><b class="mono">4.9×10⁻⁶</b><span>Leduc exploitability with DCFR after 10,000 iterations</span></div>
+    <div class="fact"><b>31 s</b><span>flop solve of a 293,390-node tree to 0.33% of pot, on a MacBook Air</span></div>
+    <div class="fact"><b>1.55 B</b><span>MCCFR iterations trained on a laptop for the 13,704-node blueprint</span></div>
+    <div class="fact"><b>~9,600</b><span>lines of Rust, 95 Rust tests plus property tests, CI on every push</span></div>
+  </div>
+
+  <section class="section">
+    <header>
+      <div class="eyebrow">How it was built</div>
+      <h2>Ten milestones, each with a gate it had to pass</h2>
+      <p class="muted">Each milestone shipped with a walkthrough PDF and only counted as done when its gate passed in CI.</p>
+    </header>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Milestone</th><th>What it adds</th><th>Gate</th></tr></thead>
+        <tbody>
+          <tr><td class="m">M1</td><td class="what">Generic <code>Game</code> trait, Kuhn poker, vanilla CFR, exact best response</td><td class="gate">game value −1/18; strategy inside the analytic equilibrium family</td></tr>
+          <tr><td class="m">M2</td><td class="what">Leduc hold'em, CFR+, Linear CFR, Discounted CFR</td><td class="gate">936 information sets; value −0.0856 matches the literature; CFR+ 280× better than CFR at 10k iterations</td></tr>
+          <tr><td class="m">M3</td><td class="what">Perfect-hash 5/6/7-card evaluator (colex rank hashing, direct flush table, 125 KB)</td><td class="gate">matches a brute-force reference on every 7-card hand; ~62M hands/s</td></tr>
+          <tr><td class="m">M4</td><td class="what">No-limit range-vs-range river and turn solver: vectorized DCFR, O(n) showdowns with card removal</td><td class="gate">polarized river matches the closed form P/(P+B); agrees with the scalar engine; catches 5 injected bugs</td></tr>
+          <tr><td class="m">M5</td><td class="what">Flop solving: rayon parallelism with safe <code>split_at_mut</code>, exact suit isomorphism, memory budget</td><td class="gate">parallel results bit-identical to serial; isomorphic solve equals the full solve</td></tr>
+          <tr><td class="m">M6.1</td><td class="what">Perfect hand-isomorphism indexer and full no-limit rules</td><td class="gate">flop indexer proven a bijection exhaustively; 169 / 1.29M / 13.96M / 123.16M classes</td></tr>
+          <tr><td class="m">M6.2</td><td class="what">Exact hand-strength tables for every class; E[HS²] percentile buckets (169/50/50/50)</td><td class="gate">preflop equities match published values (AA 85.20%, 72o 34.58%)</td></tr>
+          <tr><td class="m">M6.3</td><td class="what">Abstract no-limit blueprint (13,704 nodes) trained by multithreaded external-sampling MCCFR</td><td class="gate">MCCFR converges on Leduc against the exact engine; checkpoints round-trip</td></tr>
+          <tr><td class="m">M6.4</td><td class="what">Duplicate-match arena; f64 accumulators; blueprint exported to a browser table</td><td class="gate">self-play scores exactly 0; browser bucketing bit-identical to Rust on 660 spots</td></tr>
+          <tr><td class="m">M6.5</td><td class="what">Local best response: exploitability lower bound with exact Bayesian range tracking</td><td class="gate">equities match brute force; ranges equal Bayes' rule to 10⁻¹²</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <div class="eyebrow">Results</div>
+      <h2>From exact solutions to measured approximations</h2>
+      <p class="muted">Small games are solved exactly and verified with a full best response. The full game is too large for that, so the blueprint is measured with local best response, which finds a lower bound on how much a counter-strategy can win.</p>
+    </header>
+    <div class="charts">
+      <figure class="chart-card" style="margin:0">
+        <h3>Leduc hold'em: four CFR variants</h3>
+        <svg viewBox="0 0 560 300" role="img" aria-labelledby="ltitle"><title id="ltitle">Leduc exploitability by iteration for four CFR variants</title>
+<line class="grid" x1="54" x2="468" y1="260.0" y2="260.0"/>
+<text class="tick" x="46" y="264.0" text-anchor="end">10<tspan dy="-6" font-size="9">-6</tspan></text>
+<line class="grid" x1="54" x2="468" y1="224.9" y2="224.9"/>
+<text class="tick" x="46" y="228.9" text-anchor="end">10<tspan dy="-6" font-size="9">-5</tspan></text>
+<line class="grid" x1="54" x2="468" y1="189.7" y2="189.7"/>
+<text class="tick" x="46" y="193.7" text-anchor="end">10<tspan dy="-6" font-size="9">-4</tspan></text>
+<line class="grid" x1="54" x2="468" y1="154.6" y2="154.6"/>
+<text class="tick" x="46" y="158.6" text-anchor="end">10<tspan dy="-6" font-size="9">-3</tspan></text>
+<line class="grid" x1="54" x2="468" y1="119.4" y2="119.4"/>
+<text class="tick" x="46" y="123.4" text-anchor="end">10<tspan dy="-6" font-size="9">-2</tspan></text>
+<line class="grid" x1="54" x2="468" y1="84.3" y2="84.3"/>
+<text class="tick" x="46" y="88.3" text-anchor="end">10<tspan dy="-6" font-size="9">-1</tspan></text>
+<line class="grid" x1="54" x2="468" y1="49.1" y2="49.1"/>
+<text class="tick" x="46" y="53.1" text-anchor="end">10<tspan dy="-6" font-size="9">0</tspan></text>
+<line class="grid" x1="54" x2="468" y1="14.0" y2="14.0"/>
+<text class="tick" x="46" y="18.0" text-anchor="end">10<tspan dy="-6" font-size="9">1</tspan></text>
+<text class="tick" x="54.0" y="278" text-anchor="middle">1</text>
+<text class="tick" x="157.5" y="278" text-anchor="middle">10</text>
+<text class="tick" x="261.0" y="278" text-anchor="middle">100</text>
+<text class="tick" x="364.5" y="278" text-anchor="middle">1,000</text>
+<text class="tick" x="468.0" y="278" text-anchor="middle">10,000</text>
+<text class="axis" x="261" y="296" text-anchor="middle">iterations</text>
+<text class="axis" transform="translate(13 137) rotate(-90)" text-anchor="middle">exploitability (chips/hand)</text>
+<path class="line s1" d="M54.0,35.9 L85.2,38.1 L103.4,40.2 L116.3,41.4 L126.3,43.2 L134.5,45.1 L141.5,46.9 L147.5,48.5 L152.8,49.7 L157.5,50.9 L165.7,53.3 L172.6,55.4 L178.6,57.0 L183.9,58.9 L190.8,62.0 L196.9,62.9 L203.8,65.2 L209.8,67.9 L216.3,70.6 L223.1,72.2 L229.8,74.6 L235.7,77.1 L242.3,78.2 L248.7,81.4 L254.7,82.3 L261.0,85.0 L267.3,87.7 L273.8,89.5 L280.1,91.4 L286.4,91.7 L292.6,94.3 L298.8,96.4 L305.1,99.5 L311.6,101.2 L317.8,102.0 L324.1,105.0 L330.4,107.0 L336.6,107.3 L342.9,110.5 L349.2,112.1 L355.5,112.6 L361.8,115.3 L368.1,117.9 L374.4,119.9 L380.7,120.0 L387.0,122.3 L393.2,124.6 L399.5,125.1 L405.8,127.4 L412.1,130.2 L418.4,130.9 L424.6,133.1 L430.9,134.1 L437.2,138.2 L443.5,140.0 L449.8,139.3 L456.1,140.8 L462.3,142.3 L468.0,144.8"/>
+<path class="line s3" d="M54.0,35.9 L85.2,38.1 L103.4,40.2 L116.3,41.9 L126.3,44.3 L134.5,46.4 L141.5,49.0 L147.5,51.4 L152.8,54.1 L157.5,56.7 L165.7,60.5 L172.6,64.8 L178.6,68.8 L183.9,72.5 L190.8,77.2 L196.9,80.2 L203.8,84.9 L209.8,89.4 L216.3,93.5 L223.1,97.0 L229.8,100.7 L235.7,104.3 L242.3,107.0 L248.7,108.2 L254.7,111.6 L261.0,114.9 L267.3,117.0 L273.8,120.2 L280.1,124.9 L286.4,128.6 L292.6,130.2 L298.8,135.0 L305.1,137.0 L311.6,142.7 L317.8,146.9 L324.1,151.7 L330.4,155.6 L336.6,158.9 L342.9,161.4 L349.2,166.6 L355.5,170.7 L361.8,174.6 L368.1,177.7 L374.4,182.4 L380.7,186.0 L387.0,188.0 L393.2,192.0 L399.5,195.7 L405.8,199.7 L412.1,203.2 L418.4,209.0 L424.6,212.6 L430.9,215.1 L437.2,218.6 L443.5,221.0 L449.8,223.5 L456.1,226.5 L462.3,229.0 L468.0,230.9"/>
+<path class="line s2" d="M54.0,35.9 L85.2,38.1 L103.4,40.1 L116.3,41.5 L126.3,43.6 L134.5,43.3 L141.5,46.8 L147.5,49.2 L152.8,52.6 L157.5,54.1 L165.7,58.8 L172.6,62.4 L178.6,65.1 L183.9,67.4 L190.8,71.7 L196.9,74.0 L203.8,77.6 L209.8,79.2 L216.3,83.0 L223.1,85.6 L229.8,90.0 L235.7,90.1 L242.3,95.7 L248.7,97.2 L254.7,98.2 L261.0,100.5 L267.3,95.4 L273.8,98.1 L280.1,103.6 L286.4,103.4 L292.6,106.8 L298.8,107.1 L305.1,110.2 L311.6,110.2 L317.8,116.1 L324.1,116.4 L330.4,117.3 L336.6,119.1 L342.9,123.1 L349.2,123.3 L355.5,124.3 L361.8,127.9 L368.1,128.2 L374.4,130.5 L380.7,130.9 L387.0,131.8 L393.2,133.9 L399.5,134.9 L405.8,139.5 L412.1,137.6 L418.4,138.8 L424.6,140.9 L430.9,145.6 L437.2,144.2 L443.5,147.8 L449.8,148.9 L456.1,149.5 L462.3,151.0 L468.0,154.0"/>
+<path class="line s4" d="M54.0,35.9 L85.2,38.1 L103.4,40.0 L116.3,41.5 L126.3,43.5 L134.5,44.0 L141.5,46.7 L147.5,46.6 L152.8,49.9 L157.5,53.0 L165.7,59.9 L172.6,66.2 L178.6,70.3 L183.9,74.2 L190.8,77.4 L196.9,82.7 L203.8,89.7 L209.8,92.9 L216.3,97.4 L223.1,102.8 L229.8,106.8 L235.7,106.4 L242.3,112.8 L248.7,115.2 L254.7,119.4 L261.0,123.3 L267.3,127.2 L273.8,133.7 L280.1,137.4 L286.4,141.8 L292.6,145.4 L298.8,146.3 L305.1,148.3 L311.6,155.0 L317.8,157.9 L324.1,158.9 L330.4,161.6 L336.6,168.4 L342.9,170.8 L349.2,176.0 L355.5,179.6 L361.8,181.0 L368.1,183.0 L374.4,186.5 L380.7,189.2 L387.0,196.6 L393.2,202.2 L399.5,205.2 L405.8,211.3 L412.1,215.4 L418.4,218.1 L424.6,221.2 L430.9,223.8 L437.2,226.9 L443.5,227.8 L449.8,230.1 L456.1,232.7 L462.3,233.4 L468.0,235.7"/>
+<text class="lbl s1" x="476" y="148.8">CFR</text>
+<text class="lbl s2" x="476" y="162.8">Linear CFR</text>
+<text class="lbl s3" x="476" y="234.9">CFR+</text>
+<text class="lbl s4" x="476" y="248.9">DCFR</text>
+</svg>
+        <figcaption class="caption">Exact exploitability after each iteration, log scale. CFR+ and DCFR reach 6.7×10⁻⁶ and 4.9×10⁻⁶ chips per hand at 10,000 iterations; vanilla CFR reaches 1.9×10⁻³.</figcaption>
+      </figure>
+      <figure class="chart-card" style="margin:0">
+        <h3>Full game: how exploitable is each checkpoint?</h3>
+        <svg viewBox="0 0 560 230" role="img" aria-labelledby="btitle"><title id="btitle">Local best response winnings against four checkpoints, with 95% intervals</title>
+<line class="grid" x1="128.0" x2="128.0" y1="12" y2="178"/>
+<text class="tick" x="128.0" y="194" text-anchor="middle">0</text>
+<line class="grid" x1="230.0" x2="230.0" y1="12" y2="178"/>
+<text class="tick" x="230.0" y="194" text-anchor="middle">400</text>
+<line class="grid" x1="332.0" x2="332.0" y1="12" y2="178"/>
+<text class="tick" x="332.0" y="194" text-anchor="middle">800</text>
+<line class="grid" x1="434.0" x2="434.0" y1="12" y2="178"/>
+<text class="tick" x="434.0" y="194" text-anchor="middle">1,200</text>
+<line class="grid" x1="536.0" x2="536.0" y1="12" y2="178"/>
+<text class="tick" x="536.0" y="194" text-anchor="middle">1,600</text>
+<text class="axis" x="332" y="224" text-anchor="middle">LBR winnings, mbb/hand (lower is better)</text>
+<text class="rowlbl" x="118" y="35" text-anchor="end">34M</text>
+<text class="rownote" x="118" y="49" text-anchor="end">6 min, f32</text>
+<rect class="bar" x="128" y="26" width="291.5" height="16" rx="2"/>
+<line class="ci" x1="384.3" x2="454.7" y1="34" y2="34"/>
+<line class="ci" x1="384.3" x2="384.3" y1="29" y2="39"/>
+<line class="ci" x1="454.7" x2="454.7" y1="29" y2="39"/>
+<text class="val" x="460.7" y="38">+1,143</text>
+<text class="rowlbl" x="118" y="75" text-anchor="end">408M</text>
+<text class="rownote" x="118" y="89" text-anchor="end">f32</text>
+<rect class="bar" x="128" y="66" width="307.8" height="16" rx="2"/>
+<line class="ci" x1="401.9" x2="469.7" y1="74" y2="74"/>
+<line class="ci" x1="401.9" x2="401.9" y1="69" y2="79"/>
+<line class="ci" x1="469.7" x2="469.7" y1="69" y2="79"/>
+<text class="val" x="475.7" y="78">+1,207</text>
+<text class="rowlbl best" x="118" y="115" text-anchor="end">924M</text>
+<text class="rownote" x="118" y="129" text-anchor="end">f32 · on the table</text>
+<rect class="bar best" x="128" y="106" width="280.5" height="16" rx="2"/>
+<line class="ci" x1="371.3" x2="445.7" y1="114" y2="114"/>
+<line class="ci" x1="371.3" x2="371.3" y1="109" y2="119"/>
+<line class="ci" x1="445.7" x2="445.7" y1="109" y2="119"/>
+<text class="val" x="451.7" y="118">+1,100</text>
+<text class="rowlbl" x="118" y="155" text-anchor="end">1,552M</text>
+<text class="rownote" x="118" y="169" text-anchor="end">f64, average reset</text>
+<rect class="bar" x="128" y="146" width="354.2" height="16" rx="2"/>
+<line class="ci" x1="449.6" x2="514.8" y1="154" y2="154"/>
+<line class="ci" x1="449.6" x2="449.6" y1="149" y2="159"/>
+<line class="ci" x1="514.8" x2="514.8" y1="149" y2="159"/>
+<text class="val" x="520.8" y="158">+1,389</text>
+<line class="ref" x1="319.2" x2="319.2" y1="10" y2="178"/>
+<text class="reflbl" x="323.2" y="16">folding every hand loses 750</text>
+</svg>
+        <figcaption class="caption">What local best response wins against four blueprint checkpoints, 50,000 duplicate hands each, with 95% intervals. Exploitability flattened after the first few minutes of training, which points at the card abstraction, not training time.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <div class="eyebrow">What the measurements caught</div>
+      <h2>Three findings the tests forced</h2>
+    </header>
+    <div class="two">
+      <div class="story">
+        <h3>A cross-check that missed bugs</h3>
+        <p>The postflop solver was checked against an independent scalar implementation, and deliberately injected bugs were used to test the check itself. It first caught only one of three: the test ranges had no tied hands and no shared combos, so those code paths never ran. Adding them made all five injected bugs fail the test.</p>
+      </div>
+      <div class="story">
+        <h3>Float precision past 2²⁴</h3>
+        <p>A checkpoint trained 12× longer lost to a shorter one by a statistically clear margin. The cause was 32-bit accumulators: past about 8 million, adding a probability like 0.3 rounds to nothing, so 3.4% of the strategy table had silently stopped averaging. Switching to 64-bit fixed it at no speed cost.</p>
+      </div>
+      <div class="story">
+        <h3>Head-to-head stops ranking</h3>
+        <p>Matches between checkpoints became intransitive: A beat B, B tied C, C beat A. Near equilibrium, a match measures how leaks line up, not quality. Local best response ranked them instead, and showed that more training was no longer the bottleneck.</p>
+      </div>
+    </div>
+    <p class="muted">Limits, stated plainly: the blueprint plays an abstracted game with a fixed bet menu and no real-time search, and local best response gives a lower bound, not the true exploitability. Real-time re-solving of the turn and river with the exact solver is the next milestone.</p>
+  </section>
+
+    <footer>holdem-cfr · results as of October 18, 2026 · walkthrough PDFs for every milestone are in <a href="https://github.com/tavelarocque/holdem-cfr/tree/main/docs">docs/</a></footer>
+</div>
+

@@ -1,0 +1,31 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+engine = { path = "crates/engine" }
+games = { path = "crates/games" }
+eval = { path = "crates/eval" }
+postflop = { path = "crates/postflop" }
+hunl = { path = "crates/hunl" }
+clap = { version = "4", features = ["derive"] }
+proptest = "1"
+criterion = "0.8"
+rayon = "1"
+
+# Solver code is hot loops all the way down; debug-mode tests on Leduc would take minutes.
+[profile.test]
+opt-level = 3
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+debug = "line-tables-only"

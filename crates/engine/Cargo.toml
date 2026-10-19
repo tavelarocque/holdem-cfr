@@ -1,0 +1,11 @@
+[package]
+name = "engine"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+rayon.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

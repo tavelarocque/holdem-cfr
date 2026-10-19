@@ -1,0 +1,36 @@
+267 OOP hands, 331 IP hands, 293390 public nodes (106980 action), 588.2 MB, 2 suit symmetries, 2 threads, built in 1.46s
+iter     1     3.66s  exploitability 79.521% of pot
+iter     2     4.45s  exploitability 77.306% of pot
+iter     4     6.05s  exploitability 68.837% of pot
+iter     8     9.24s  exploitability 29.732% of pot
+iter    16    16.08s  exploitability 11.815% of pot
+iter    32    29.74s  exploitability 3.823% of pot
+iter    64    57.23s  exploitability 1.017% of pot
+iter   114   101.29s  exploitability 0.332% of pot
+done: 114 iterations, 108.11s, exploitability 0.332% of pot
+EV (share of the 100 pot): OOP 50.22, IP 49.78
+
+OOP at the root:
+  check          49.5%
+  bet 33         48.2%
+  allin 400       2.3%
+  class   combos      check    bet 33 allin 400
+  AA        6.00        25%       52%       23%
+  KK        6.00        20%       66%       14%
+  QQ        3.00        35%       65%        0%
+  JJ        3.00        46%       54%        0%
+  TT        6.00        37%       63%        0%
+  99        6.00        52%       48%        0%
+  88        6.00        88%       12%        0%
+  77        6.00        81%       19%        0%
+  66        6.00        70%       30%        0%
+  55        6.00        61%       39%        0%
+  44        3.00         5%       95%        0%
+  33        6.00        45%       55%        0%
+  22        6.00        37%       63%        0%
+  AKo      12.00        34%       49%       17%
+  AKs       4.00        47%       42%       11%
+  ... 36 more classes (use --show)
+IP after OOP check: check 54.4%, bet 33 45.6%, allin 400 0.0%
+IP after OOP bet 33: fold 20.5%, call 76.4%, raise 199 3.0%, allin 400 0.1%
+IP after OOP allin 400: fold 72.3%, call 27.7%

@@ -1,0 +1,13 @@
+[package]
+name = "games"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+engine.workspace = true
+eval.workspace = true
+
+[dev-dependencies]
+rayon.workspace = true
+proptest.workspace = true

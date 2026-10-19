@@ -1,0 +1,17 @@
+building strength tables on 2 threads
+  river: 134459 boards, 123156254 classes (35.4s)
+  turn: 13960050 classes (202.5s)
+  flop: 1286792 classes (221.2s)
+  preflop: 169 classes (221.9s)
+
+preflop equity vs a random hand (E[HS]) and E[HS^2]:
+  AsAh  E[HS] 0.8520  E[HS^2] 0.7372
+  KsKh  E[HS] 0.8240  E[HS^2] 0.6922
+  QsQh  E[HS] 0.7993  E[HS^2] 0.6534
+  AsKs  E[HS] 0.6704  E[HS^2] 0.5111
+  AsKh  E[HS] 0.6532  E[HS^2] 0.4862
+  Ts9s  E[HS] 0.5403  E[HS^2] 0.3906
+  7s2h  E[HS] 0.3458  E[HS^2] 0.2073
+  3s2h  E[HS] 0.3230  E[HS^2] 0.1995
+
+buckets [169, 50, 50, 50] written to data/buckets.bin (227.7s total)
